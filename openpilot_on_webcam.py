@@ -19,8 +19,10 @@ Options:
   --display-scale FLOAT upscale factor for the 512×256 model display (default 2)
   --fps-cap INT         maximum loop rate in Hz (default 20)
   --rhd                 right-hand drive traffic convention (Japan/UK)
+  --pitch FLOAT         nose-down pitch correction in degrees (default 0;
+                        use ~5.1 for a horizontally-mounted webcam)
 
-Model file (openpilot v0.8.10, placed under selfdrive/modeld/models/):
+Model file (openpilot v0.8.12, placed under models/):
   supercombo.onnx
 If absent the script runs in preview-only mode.
 
@@ -69,6 +71,10 @@ def parse_args() -> argparse.Namespace:
                    help='upscale factor for the 512×256 model display (default 2)')
     p.add_argument('--fps-cap', type=int, default=20,
                    help='maximum frames per second (default 20)')
+    p.add_argument('--pitch', type=float, default=0.0,
+                   help='nose-down pitch correction in degrees (default 0). '
+                        'Use ~5.1 for a horizontally-mounted webcam to match '
+                        'the ~5.1° downward pitch assumed by the SuperCombo model.')
     p.add_argument('--rhd', action='store_true',
                    help='right-hand drive traffic (Japan/UK: cars drive on left)')
     p.add_argument('--no-flip', dest='flip', action='store_false',
@@ -114,9 +120,12 @@ def main() -> None:
     CAM_H, CAM_W = first.shape[:2]
     print(f'[INFO] Webcam: {CAM_W}×{CAM_H},  focal_length={args.focal_length}')
 
-    # ── perspective warp matrix (medmodel only — v0.8.10 has one camera input)
+    # ── perspective warp matrix (medmodel only — v0.8.12 has one camera input)
     # flip=args.flip bakes the 180° rotation into M, eliminating a separate cv2.flip() call
-    M_main = build_warp_matrix(CAM_W, CAM_H, args.focal_length, big=False, flip=args.flip)
+    M_main = build_warp_matrix(CAM_W, CAM_H, args.focal_length,
+                               big=False, flip=args.flip, pitch_deg=args.pitch)
+    if args.pitch != 0.0:
+        print(f'[INFO] Pitch correction: {args.pitch:.1f}° nose-down')
     # M_main maps model pixel → camera pixel (used both for warpPerspective and back-projection)
 
     # ── camera intrinsic matrix (for direct overlay projection onto camera image) ──

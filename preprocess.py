@@ -12,7 +12,8 @@ from .constants import MEDMODEL_K, SBIGMODEL_K
 
 
 def build_warp_matrix(cam_w: int, cam_h: int, focal_length: float,
-                      big: bool = False, flip: bool = False) -> np.ndarray:
+                      big: bool = False, flip: bool = False,
+                      pitch_deg: float = 0.0) -> np.ndarray:
     """Return 3×3 homography M for cv2.warpPerspective(..., WARP_INVERSE_MAP).
 
     For each destination (model) pixel (dx, dy) the source (webcam) pixel is
@@ -24,6 +25,12 @@ def build_warp_matrix(cam_w: int, cam_h: int, focal_length: float,
 
     If flip=True, a 180° rotation is baked into M so that cv2.flip() is not
     needed separately — saves ~0.7 ms per frame on a 1280×720 input.
+
+    If pitch_deg != 0, a pitch-rotation homography is pre-multiplied so the
+    warped image looks as if the camera were tilted nose-down by that angle.
+    The SuperCombo model was trained with ~5.1° nose-down pitch (derived from
+    MEDMODEL_CY=47.6, FL=910, image height 256 px).  Passing pitch_deg=5.1
+    compensates for a horizontally-mounted webcam.
     """
     webcam_K = np.array([
         [focal_length, 0.,           cam_w / 2],
@@ -31,6 +38,17 @@ def build_warp_matrix(cam_w: int, cam_h: int, focal_length: float,
         [0.,           0.,           1.        ]], dtype=np.float64)
     model_K = SBIGMODEL_K if big else MEDMODEL_K
     M = webcam_K @ np.linalg.inv(model_K)
+    if pitch_deg != 0.0:
+        # Apply nose-down pitch rotation in webcam image space:
+        #   H = webcam_K @ R_x(θ) @ inv(webcam_K)
+        # where R_x(θ) rotates the camera around its x-axis (pitch down = +θ).
+        theta = np.deg2rad(pitch_deg)
+        c, s = np.cos(theta), np.sin(theta)
+        R_x = np.array([[1., 0.,  0.],
+                        [0., c,  -s],
+                        [0., s,   c]], dtype=np.float64)
+        H_pitch = webcam_K @ R_x @ np.linalg.inv(webcam_K)
+        M = H_pitch @ M
     if flip:
         # 180° rotation of the source: (x,y) → (cam_w-1-x, cam_h-1-y)
         flip_mat = np.array([

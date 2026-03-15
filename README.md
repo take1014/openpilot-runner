@@ -84,6 +84,7 @@ python -m openpilot-runner.openpilot_on_webcam --no-flip
 | `--fps-cap INT` | `20` | Maximum display frame rate (Hz) |
 | `--rhd` | — | Right-hand drive traffic (Japan / UK: drive on left) |
 | `--no-flip` | — | Disable vertical flip (default: flip is ON for upside-down mounting) |
+| `--pitch FLOAT` | `0.0` | Nose-down pitch correction in degrees. Use `5.1` for a horizontally-mounted webcam to match the ~5.1° downward camera pitch assumed by the SuperCombo model. |
 | `--save-video [FILE]` | — | Save to MP4. Omit FILE for an auto-generated timestamped name |
 
 **Quit**: press `q` or `ESC`
