@@ -10,6 +10,9 @@ dist/
 build/
 .eggs/
 
+# Model files (large binaries — do not commit)
+*.onnx
+
 # Virtual environments
 .venv/
 venv/
