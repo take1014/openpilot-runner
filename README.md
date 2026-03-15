@@ -264,6 +264,37 @@ z_device = plan_z + MEDMODEL_HEIGHT   # 0 + 1.22 = 1.22 m at road surface
 
 ---
 
+## Pitch correction (`--pitch`)
+
+The SuperCombo model was trained assuming the camera is mounted with a slight
+nose-down tilt. This tilt angle is encoded in the model's principal-point row
+`MEDMODEL_CY`:
+
+$$\theta_{model} = \arctan\!\left(\frac{H/2 - \text{MEDMODEL\_CY}}{\text{MEDMODEL\_FL}}\right) = \arctan\!\left(\frac{128 - 47.6}{910}\right) \approx 5.1°$$
+
+A horizontally-mounted webcam lacks this tilt, causing lane lines, the path,
+and lead-car overlays to appear shifted upward in the model-space panel.
+`--pitch 5.1` compensates by pre-multiplying a pitch-rotation homography into
+the warp matrix before inference:
+
+$$H_{pitch} = K_{cam} \cdot R_x(\theta) \cdot K_{cam}^{-1}$$
+$$M \leftarrow H_{pitch} \cdot M$$
+
+where $R_x(\theta)$ is a rotation around the camera x-axis (positive = nose down).
+
+### Recommended values
+
+| Mounting condition | `--pitch` value |
+|---|---|
+| Camera tilted ~5° downward (openpilot-style) | `0.0` (default) |
+| Camera mounted horizontally | `5.1` |
+| Camera tilted upward (dashboard edge, wide angle) | `7`–`10` (tune visually) |
+
+Tune visually: with the correct pitch value, straight lane lines should project
+onto lane markings in the model-space panel without vertical offset.
+
+---
+
 ## Tuning the focal length
 
 Market webcams such as the C920 often differ between their nominal specification and actual measured value.
