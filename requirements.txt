@@ -18,6 +18,6 @@ numpy>=1.24
 opencv-python>=4.8        # cv2: webcam capture, warpPerspective, imshow
 
 # ── Model inference (optional) ────────────────────────────────────────────────
-# onnxruntime is needed to run supercombo.onnx (v0.8.10 model format).
+# onnxruntime is needed to run supercombo.onnx (v0.8.12 model format).
 # Comment out if you only want the webcam preview without inference.
 onnxruntime>=1.14
