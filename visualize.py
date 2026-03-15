@@ -429,6 +429,37 @@ def draw_birdseye(outputs: dict) -> np.ndarray:
                         cv2.FONT_HERSHEY_SIMPLEX, fs, (200, 200, 200), 1, cv2.LINE_AA)
             ty += 34
 
+    # ── prob / confidence values (bottom-left) ────────────────────────────────
+    # Path prob (softmax), lane_line_probs (sigmoid), road_edge conf (1-std)
+    fs2 = 0.26
+    py_prob = BEV_H - 8   # start from bottom, go upward
+    line_h  = 11
+
+    # road edges: conf = clamp(1 - std, 0, 1)
+    if edge_stds is not None:
+        re_conf = [float(np.clip(1.0 - float(edge_stds[i]), 0.0, 1.0))
+                   for i in range(min(2, len(edge_stds)))]
+        re_str = '  '.join(f'{"LR"[i]}={re_conf[i]:.2f}' for i in range(len(re_conf)))
+        cv2.putText(img, f'RE {re_str}', (3, py_prob),
+                    cv2.FONT_HERSHEY_SIMPLEX, fs2, _RED_BGR, 1, cv2.LINE_AA)
+        py_prob -= line_h
+
+    # lane line probs
+    if lane_probs is not None:
+        lp = [float(np.clip(float(lane_probs[i]), 0.0, 1.0))
+              for i in range(min(4, len(lane_probs)))]
+        labels_lr = ['LF', 'LN', 'RN', 'RF']
+        ll_str = '  '.join(f'{labels_lr[i]}={lp[i]:.2f}' for i in range(len(lp)))
+        cv2.putText(img, f'LL {ll_str}', (3, py_prob),
+                    cv2.FONT_HERSHEY_SIMPLEX, fs2, _WHITE, 1, cv2.LINE_AA)
+        py_prob -= line_h
+
+    # path prob
+    plan_prob = outputs.get('plan_prob')
+    if plan_prob is not None:
+        cv2.putText(img, f'Path p={float(plan_prob):.2f}', (3, py_prob),
+                    cv2.FONT_HERSHEY_SIMPLEX, fs2, (200, 200, 200), 1, cv2.LINE_AA)
+
     # ── label ─────────────────────────────────────────────────────────────────
     cv2.putText(img, "Bird's-eye", (3, 11),
                 cv2.FONT_HERSHEY_SIMPLEX, 0.35, (140, 140, 140), 1, cv2.LINE_AA)

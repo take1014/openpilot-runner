@@ -69,6 +69,9 @@ def parse_outputs(raw: np.ndarray) -> dict:
         best  = int(np.argmax(probs))
         plan_mean = plans[best, :PLAN_MHP_VALS].reshape(N, PLAN_WIDTH)
         out['plan'] = plan_mean[np.newaxis, np.newaxis, :, :]  # (1,1,N,15)
+        # plan_prob: softmax of hypothesis logits → confidence of best hypothesis
+        exp_p = np.exp(probs - probs.max())
+        out['plan_prob'] = float(exp_p[best] / exp_p.sum())
 
     # ── lead (best t=0 hypothesis) ──────────────────────────────────────────
     # 2 lead hypotheses × LEAD_MHP_GROUP_SIZE=51 floats each.
