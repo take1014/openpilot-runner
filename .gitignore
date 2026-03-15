@@ -10,8 +10,8 @@ dist/
 build/
 .eggs/
 
-# Model files (large binaries — do not commit)
-*.onnx
+# Model files (large binaries — stored in repo via Git LFS if needed)
+# *.onnx
 
 # Virtual environments
 .venv/
