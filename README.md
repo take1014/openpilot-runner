@@ -1,170 +1,276 @@
-# openpilot_runner
+# openpilot-runner
 
-openpilot の SuperCombo モデル (v0.8.10) を単体で動かすスタンドアロンモジュールです。  
-ウェブカメラのリアルタイム映像、または保存済み画像フォルダに対して推論を行い、車線・道路端・走行経路・先行車のオーバーレイを描画します。
+A standalone module that runs the openpilot SuperCombo model (v0.8.10) independently.
+Performs inference on real-time webcam footage or a folder of saved images, and draws lane lines, road edges, path, and lead-car overlays.
 
-## 機能
+## Features
 
-- **リアルタイム推論** (`openpilot_on_webcam.py`) — ウェブカメラ映像にオーバーレイをリアルタイム表示、MP4 保存も可能
-- **バッチ処理** (`test/test_images.py`) — 画像フォルダを一括処理して結果画像を書き出し
-- **SuperCombo v0.8.10** — ONNX Runtime でモデルを実行。M1/M2 Mac、Linux CPU どちらでも動作
-- **左右分割表示** — 左パネル: カメラ原寸（1280×720）、右パネル: モデル入力（512×256 × scale）
+- **Real-time inference** (`openpilot_on_webcam.py`) — live overlay display on webcam footage, with optional MP4 recording
+- **Batch processing** (`test/test_images.py`) — process an image folder and write annotated output images
+- **SuperCombo v0.8.10** — model executed via ONNX Runtime; works on M1/M2 Mac and Linux CPU
+- **Split view** — left panel: full camera frame (1280×720), right panel: model input view (512×256 × scale)
+- **Tested camera** — Logitech C920 (1280×720, HFOV ~70°, focal length ~908 px)
 
-## 動作要件
+## Requirements
 
-- Python 3.11 以上
+- Python 3.11 or later (below 3.13)
 - `numpy >= 1.24`
 - `opencv-python >= 4.8`
-- `onnxruntime >= 1.18`（推論を行う場合）
+- `onnxruntime >= 1.14` (required for inference)
+
+### pip (standard virtual environment)
 
 ```bash
-pip install -r openpilot_runner/requirements.txt
+python -m venv .venv
+source .venv/bin/activate      # Windows: .venv\Scripts\activate
+pip install -r requirements.txt
 ```
 
-## モデルファイルの配置
+### Anaconda / Miniconda
 
-`supercombo.onnx`（openpilot v0.8.10）を以下に置きます:
+```bash
+conda create -n openpilot-runner python=3.11
+conda activate openpilot-runner
+pip install -r requirements.txt
+```
+
+## Model file
+
+Place `supercombo.onnx` (openpilot v0.8.10) at:
 
 ```
-openpilot_runner/models/supercombo.onnx
+openpilot-runner/models/supercombo.onnx
 ```
 
-モデルがない場合はプレビューモード（推論なし）で起動します。
+If the model is absent, the script starts in preview-only mode (no inference).
 
 ---
 
-## 使い方
+## Usage
 
-### 1. リアルタイムウェブカメラ
+### 1. Real-time webcam
 
 ```bash
-# 基本（カメラデバイス 0、右側通行）
-python -m openpilot_runner.openpilot_on_webcam
+# Basic (camera device 0, left-hand traffic)
+python -m openpilot-runner.openpilot_on_webcam
 
-# デバイス指定・焦点距離調整
-python -m openpilot_runner.openpilot_on_webcam --camera 1 --focal-length 820
+# Specify device and focal length
+python -m openpilot-runner.openpilot_on_webcam --camera 1 --focal-length 820
 
-# 左側通行（日本・英国）
-python -m openpilot_runner.openpilot_on_webcam --rhd
+# Right-hand drive traffic (Japan / UK)
+python -m openpilot-runner.openpilot_on_webcam --rhd
 
-# 動画を保存（タイムスタンプ付き自動ファイル名）
-python -m openpilot_runner.openpilot_on_webcam --save-video
+# Save to video (auto-generated timestamped filename)
+python -m openpilot-runner.openpilot_on_webcam --save-video
 
-# 動画を保存（ファイル名指定）
-python -m openpilot_runner.openpilot_on_webcam --save-video output.mp4
+# Save to video (explicit filename)
+python -m openpilot-runner.openpilot_on_webcam --save-video output.mp4
 
-# カメラが上下逆に取り付けられている場合（デフォルトで有効）
-# --no-flip で無効化
-python -m openpilot_runner.openpilot_on_webcam --no-flip
+# Camera mounted upside-down (vertical flip is ON by default)
+# Use --no-flip to disable
+python -m openpilot-runner.openpilot_on_webcam --no-flip
 ```
 
-| オプション | デフォルト | 説明 |
+| Option | Default | Description |
 |---|---|---|
-| `--camera INT` | `0` | ウェブカメラのデバイス番号 |
-| `--width INT` | `1280` | キャプチャ幅 (px) |
-| `--height INT` | `720` | キャプチャ高さ (px) |
-| `--focal-length FLOAT` | `908.0` | 焦点距離 (px)。C920 は約 908、広角 78° では約 820 |
-| `--display-scale FLOAT` | `2.0` | モデル 512×256 の表示倍率 |
-| `--fps-cap INT` | `20` | 最大フレームレート (Hz) |
-| `--rhd` | — | 左側通行モード（日本・英国） |
-| `--no-flip` | — | 垂直反転を無効化（デフォルト: 反転あり） |
-| `--save-video [FILE]` | — | MP4 保存。FILE 省略でタイムスタンプ自動命名 |
+| `--camera INT` | `0` | Webcam device index |
+| `--width INT` | `1280` | Capture width (px) |
+| `--height INT` | `720` | Capture height (px) |
+| `--focal-length FLOAT` | `908.0` | Focal length (px). ~908 for C920, ~820 for 78° HFOV webcam |
+| `--display-scale FLOAT` | `2.0` | Display scale factor for the 512×256 model view |
+| `--cam-fps INT` | `20` | Camera capture frame rate (Hz) |
+| `--fps-cap INT` | `20` | Maximum display frame rate (Hz) |
+| `--rhd` | — | Right-hand drive traffic (Japan / UK: drive on left) |
+| `--no-flip` | — | Disable vertical flip (default: flip is ON for upside-down mounting) |
+| `--save-video [FILE]` | — | Save to MP4. Omit FILE for an auto-generated timestamped name |
 
-**終了**: `q` または `ESC`
+**Quit**: press `q` or `ESC`
 
 ---
 
-### 2. 保存済み画像フォルダのバッチ処理
+### 2. Batch processing of saved images
 
 ```bash
-# 基本
-python -m openpilot_runner.test.test_images --input ~/fun/openpilot-runner/c920
+# Basic
+python -m openpilot-runner.test.test_images --input ~/fun/openpilot-runner/c920
 
-# 出力フォルダ・焦点距離指定
-python -m openpilot_runner.test.test_images \
+# Specify output folder and focal length
+python -m openpilot-runner.test.test_images \
     --input  ~/fun/openpilot-runner/c920 \
     --output ~/fun/openpilot-runner/c920_out \
     --focal-length 820
 
-# 左側通行、最初の 100 枚のみ処理
-python -m openpilot_runner.test.test_images \
+# Right-hand drive, process only the first 100 frames
+python -m openpilot-runner.test.test_images \
     --input ~/fun/openpilot-runner/c920 \
     --rhd --limit 100
 ```
 
-| オプション | デフォルト | 説明 |
+| Option | Default | Description |
 |---|---|---|
-| `--input DIR` | 必須 | 入力画像フォルダ |
-| `--output DIR` | `<input>_out` | 出力画像フォルダ |
-| `--focal-length FLOAT` | `908.0` | 焦点距離 (px) |
-| `--display-scale FLOAT` | `2.0` | モデルビューの表示倍率 |
-| `--rhd` | — | 左側通行モード |
-| `--flip` | — | 180° 反転を有効化（デフォルト: 無効） |
-| `--ext EXT` | `png` | 入力画像の拡張子 |
-| `--limit N` | — | 処理する最大フレーム数 |
+| `--input DIR` | required | Input image folder |
+| `--output DIR` | `<input>_out` | Output image folder |
+| `--focal-length FLOAT` | `908.0` | Focal length (px) |
+| `--display-scale FLOAT` | `2.0` | Display scale factor for the model view |
+| `--rhd` | — | Right-hand drive traffic mode |
+| `--flip` | — | Enable 180° vertical flip (default: disabled) |
+| `--ext EXT` | `png` | Input image file extension |
+| `--limit N` | — | Maximum number of frames to process |
 
 ---
 
-## 座標系と出力の解釈
+## Coordinate system and output interpretation
 
-SuperCombo モデルの出力はデバイスフレーム座標系です:
+SuperCombo model outputs use the device frame coordinate system:
 
-| 軸 | 方向 |
+| Axis | Direction |
 |---|---|
-| x | 前方 |
-| y | 右方向 |
-| z | 下方向（z=1.22 がカメラ真下の道路面） |
+| x | Forward |
+| y | Right |
+| z | Downward (z=1.22 is the road surface directly below a 1.22 m mounted camera) |
 
-### オーバーレイの色
+### Overlay colours
 
-| 色 | 意味 |
+| Colour | Meaning |
 |---|---|
-| 緑 | 自車線（left_near / right_near） |
-| 橙 | 隣接車線（left_far / right_far） |
-| 紫 | 道路端 (road edges) |
-| 水色 | 走行経路 (path / plan) |
-| 赤 | 先行車 (lead car) |
+| Green | Ego lane lines (left_near / right_near) |
+| Blue | Adjacent lane lines (left_far / right_far) |
+| Purple | Road edges |
+| Orange | Predicted path / plan |
+| Red | Lead car |
 
-### オーバーレイのずれについて
+### Note on overlay alignment
 
-モデルはカメラ高さ 1.22m・水平取り付けを前提として学習されています。  
-実際の取り付け高さや道路勾配が異なると、描画位置が数十 px ずれることがあります。これはコードのバグではなくカメラ設置条件の差異によるものです。
+The model was trained assuming a camera mounted at 1.22 m height, horizontally level.
+Differences in actual mounting height or road gradient may cause overlays to shift by tens of pixels. This is not a bug — it reflects the difference between training conditions and real-world camera setup.
 
 ---
 
-## モジュール構成
+## Module structure
 
 ```
-openpilot_runner/
-├── constants.py          カメラ内部パラメータ・座標変換定数
-├── preprocess.py         ワープ行列・YUV 変換・モデル入力バッファ生成
-├── visualize.py          3D→画像投影・オーバーレイ描画
-├── openpilot_on_webcam.py  リアルタイム推論メインスクリプト
+openpilot-runner/
+├── constants.py            Camera intrinsics and coordinate transform constants
+├── preprocess.py           Warp matrix, YUV conversion, model input buffer construction
+├── visualize.py            3D-to-image projection and OpenCV overlay drawing
+├── openpilot_on_webcam.py  Real-time inference main script
 ├── camera/
-│   └── __init__.py       CameraThread, AsyncVideoWriter
+│   └── __init__.py         CameraThread, AsyncVideoWriter
 ├── runner/
-│   ├── __init__.py       ModelRunner (ONNX 実行)
-│   ├── constants.py      モデル定数（入出力サイズ・インデックス等）
-│   └── parser.py         sigmoid, parse_outputs
+│   ├── __init__.py         ModelRunner (ONNX execution)
+│   ├── constants.py        Model constants (I/O sizes, indices, etc.)
+│   └── parser.py           sigmoid, parse_outputs
 ├── test/
-│   ├── test_images.py    バッチ推論スクリプト
-│   └── debug_projection.py  投影座標のデバッグ出力ツール
+│   ├── test_images.py      Batch inference script
+│   └── debug_projection.py Projection coordinate debug tool
 └── models/
-    └── supercombo.onnx   (要配置)
+    └── supercombo.onnx     (place model file here)
 ```
 
 ---
 
-## 焦点距離のチューニング
+## Coordinate transforms
 
-C920 などの Market ウェブカメラは公称スペックと実測値が異なる場合があります。
+### Pipeline overview
 
-| カメラ / 条件 | 推奨焦点距離 (px) |
+```
+┌─────────────────────┐
+│  Webcam frame       │  BGR, e.g. 1280×720
+│  (camera space)     │
+└────────┬────────────┘
+         │  build_warp_matrix() + cv2.warpPerspective()
+         │  homography:  M = webcam_K · inv(model_K)
+         ▼
+┌─────────────────────┐
+│  Model input frame  │  YUV 512×256  (+ previous frame stacked)
+│  (medmodel space)   │
+└────────┬────────────┘
+         │  supercombo.onnx (ONNX Runtime)
+         ▼
+┌─────────────────────┐
+│  Model outputs      │  lane_lines, road_edges, plan, lead
+│  (device frame)     │  x=forward  y=right  z=down  [metres]
+└────────┬────────────┘
+         │  road_to_img():  pinhole back-projection
+         │  u = fx·(y/x) + cx
+         │  v = fy·(z/x) + cy
+         ▼
+┌─────────────────────┐
+│  Overlay pixels     │  drawn on the 512×256 model view
+│  (model image px)   │  (scaled by display_scale for the window)
+└─────────────────────┘
+```
+
+### Device frame axes
+
+```
+              x (forward)
+              ▲
+              │
+              │        ← top-down view →
+   y ◄────────┤  (camera)
+  (right)     │
+              │
+         ─────┼──────────────────────  road surface (z = 1.22 m)
+```
+
+```
+   camera ●
+          │  z (down)
+          │
+          ▼
+   ───────────────────  road surface  z = MEDMODEL_HEIGHT = 1.22 m
+```
+
+The model outputs all distances in **metres** in device frame.
+Road surface is at approximately **z = 1.22** (camera height above road).
+
+### Warp homography
+
+The webcam frame is re-projected into the 512×256 model input space using a
+homography derived from both camera intrinsic matrices:
+
+```
+M = webcam_K · inv(medmodel_K)
+```
+
+| Matrix | fx | fy | cx | cy |
+|---|---|---|---|---|
+| `medmodel_K` | 910.0 | 910.0 | 256.0 | 47.6 |
+| `webcam_K` (C920) | 908.0 | 908.0 | 640.0 | 360.0 |
+
+If the camera is mounted upside-down (`--flip`), a 180° rotation is baked
+into M so no separate `cv2.flip()` call is needed.
+
+### Back-projection (device frame → image pixels)
+
+`road_to_img()` in [visualize.py](visualize.py) uses a simple pinhole model:
+
+$$u = f_x \cdot \frac{y}{x} + c_x \qquad v = f_y \cdot \frac{z}{x} + c_y$$
+
+Points with $x \le 0.5$ m (behind or very close to the camera) are discarded.
+
+### Plan z-offset
+
+The `plan` output stores z as **road-surface-relative** (z=0 at road surface).
+To convert to device frame for projection, `MEDMODEL_HEIGHT` is added:
+
+```python
+z_device = plan_z + MEDMODEL_HEIGHT   # 0 + 1.22 = 1.22 m at road surface
+```
+
+---
+
+## Tuning the focal length
+
+Market webcams such as the C920 often differ between their nominal specification and actual measured value.
+
+| Camera / condition | Recommended focal length (px) |
 |---|---|
-| C920 / Brio、1280×720、水平視野角 ~70° | `908` |
-| 広角ウェブカメラ、水平視野角 ~78° | `820` |
+| C920 / Brio, 1280×720, HFOV ~70° | `908` |
+| Wide-angle webcam, HFOV ~78° | `820` |
 
-計算式（水平視野角 HFOV から）:
+Formula (from horizontal field of view HFOV):
 ```
 focal_length = (width / 2) / tan(HFOV_deg / 2 * π / 180)
 ```
