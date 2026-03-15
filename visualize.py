@@ -415,7 +415,7 @@ def draw_birdseye(outputs: dict) -> np.ndarray:
     # ── quadratic fit labels (top-right) ──────────────────────────────────────
     # y = a*x^2 + b*x + c  (a:曲率, b:ヨー角, c:横位置)
     if lanes is not None:
-        tx0 = BEV_W // 2 + 2
+        tx0 = BEV_W // 2 + 28
         ty  = 14
         fs  = 0.26
         for i in range(min(4, lanes.shape[1])):
@@ -464,6 +464,6 @@ def draw_birdseye(outputs: dict) -> np.ndarray:
                     cv2.FONT_HERSHEY_SIMPLEX, fs2, (200, 200, 200), 1, cv2.LINE_AA)
 
     # ── label ─────────────────────────────────────────────────────────────────
-    cv2.putText(img, "Bird's-eye", (3, 11),
+    cv2.putText(img, 'BEV', (3, 11),
                 cv2.FONT_HERSHEY_SIMPLEX, 0.35, (140, 140, 140), 1, cv2.LINE_AA)
     return img
