@@ -41,6 +41,11 @@ def parse_outputs(raw: np.ndarray) -> dict:
     if len(raw) > LL_PROB_IDX:
         ll = raw[LL_IDX:LL_PROB_IDX].reshape(2, 4, N, 2)
         out['lane_lines'] = ll[np.newaxis, 0, :, :, :]   # (1, 4, N, 2)
+        # lane_line_probs: ModelDataRawLinesProb = 4 × {val_deprecated, val}
+        # The active probability is 'val' (odd indices); apply sigmoid.
+        # Order: left_far[1], left_near[3], right_near[5], right_far[7]
+        ll_prob_raw = raw[LL_PROB_IDX:LL_PROB_IDX + 8]
+        out['lane_line_probs'] = sigmoid(ll_prob_raw[1::2])  # (4,)
 
     # ── road_edges ──────────────────────────────────────────────────────────
     # Memory layout (ModelDataRawRoadEdges):
@@ -51,6 +56,9 @@ def parse_outputs(raw: np.ndarray) -> dict:
     if len(raw) > re_end:
         re = raw[RE_IDX:re_end].reshape(2, 2, N, 2)
         out['road_edges'] = re[np.newaxis, 0, :, :, :]   # (1, 2, N, 2)
+        # road_edge_stds: exp(y-std at first point) for each edge — matches
+        # framed.setRoadEdgeStds in fill_road_edges (driving.cc)
+        out['road_edge_stds'] = np.exp(re[1, :, 0, 0])   # (2,)
 
     # ── plan (best MHP) ─────────────────────────────────────────────────────
     # 5 plan hypotheses × PLAN_MHP_GROUP_SIZE=991 floats each.
@@ -73,5 +81,8 @@ def parse_outputs(raw: np.ndarray) -> dict:
         lead_mean = lead_preds[best, :LEAD_MHP_VALS].reshape(
             LEAD_TRAJ_LEN, LEAD_PRED_DIM)
         out['lead'] = lead_mean[np.newaxis, np.newaxis, :, :]  # (1,1,6,4)
+        # lead_prob: ModelDataRawLeads.prob[0] — overall lead probability at t=0
+        # sigmoid(raw[LEAD_PROB_IDX]) matches fill_lead: lead.setProb(sigmoid(leads.prob[t_idx]))
+        out['lead_prob'] = float(sigmoid(raw[LEAD_PROB_IDX:LEAD_PROB_IDX + 1])[0])
 
     return out

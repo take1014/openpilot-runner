@@ -31,7 +31,7 @@ from ..runner.constants import (
 from ..preprocess import (
     build_warp_matrix, warp_to_model_space, bgr_to_yuv_planes, pack_loadyuv,
 )
-from ..visualize import draw_overlays, put_legend
+from ..visualize import draw_overlays, put_legend, draw_birdseye, BEV_W, BEV_H
 from ..runner import ModelRunner
 
 
@@ -113,6 +113,7 @@ def main() -> None:
     # ── display layout ────────────────────────────────────────────
     DISP_W = int(MODEL_W * args.display_scale)
     DISP_H = int(MODEL_H * args.display_scale)
+    bev_disp_w = int(BEV_W * DISP_H / BEV_H)  # scale BEV panel to match row height
 
     # ── temporal ring buffer ──────────────────────────────────────
     ring: deque[np.ndarray] = deque(maxlen=TEMPORAL_SKIP + 1)
@@ -172,7 +173,9 @@ def main() -> None:
                     (8, 22), cv2.FONT_HERSHEY_SIMPLEX,
                     0.55, (200, 200, 200), 1, cv2.LINE_AA)
 
-        canvas = np.hstack([left_panel, right_panel])
+        bev_panel = cv2.resize(draw_birdseye(outputs),
+                                (bev_disp_w, DISP_H), interpolation=cv2.INTER_NEAREST)
+        canvas = np.hstack([left_panel, right_panel, bev_panel])
         out_path = output_dir / img_path.name
         cv2.imwrite(str(out_path), canvas)
 

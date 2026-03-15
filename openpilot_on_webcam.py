@@ -42,7 +42,7 @@ from .runner.constants import (
 from .preprocess import (
     build_warp_matrix, warp_to_model_space, bgr_to_yuv_planes, pack_loadyuv,
 )
-from .visualize import draw_overlays, put_legend
+from .visualize import draw_overlays, put_legend, draw_birdseye, BEV_W, BEV_H
 from .runner import ModelRunner
 from .camera import CameraThread, AsyncVideoWriter
 
@@ -132,8 +132,10 @@ def main() -> None:
     # ── display window ───────────────────────────────────────────
     DISP_W = int(MODEL_W * args.display_scale)
     DISP_H = int(MODEL_H * args.display_scale)
+    CANVAS_H = DISP_H * 2                         # top + bottom panel stacked
+    bev_disp_w = int(BEV_W * CANVAS_H / BEV_H)   # BEV scaled to full canvas height
     cv2.namedWindow('SuperCombo Webcam', cv2.WINDOW_NORMAL)
-    cv2.resizeWindow('SuperCombo Webcam', DISP_W * 2, DISP_H)
+    cv2.resizeWindow('SuperCombo Webcam', DISP_W + bev_disp_w, CANVAS_H)
 
     # ── video writer (optional) ───────────────────────────────────
     writer: AsyncVideoWriter | None = None
@@ -142,7 +144,7 @@ def main() -> None:
             args.save_video = datetime.now().strftime('openpilot_%Y%m%d_%H%M%S.mp4')
         fourcc = cv2.VideoWriter_fourcc(*'mp4v')
         _vw = cv2.VideoWriter(
-            args.save_video, fourcc, float(args.fps_cap), (DISP_W * 2, DISP_H))
+            args.save_video, fourcc, float(args.fps_cap), (DISP_W + bev_disp_w, CANVAS_H))
         if not _vw.isOpened():
             print(f'[WARN] Cannot open video writer for {args.save_video}', file=sys.stderr)
         else:
@@ -188,13 +190,13 @@ def main() -> None:
                 outputs = {}
 
         # ── build display ─────────────────────────────────────────
-        # Right panel: model input (warped) with overlay in model space
-        right_panel = cv2.resize(warped_main, (DISP_W, DISP_H),
-                                 interpolation=cv2.INTER_LINEAR)
+        # Bottom panel: model input (warped) with overlay in model space
+        bottom_panel = cv2.resize(warped_main, (DISP_W, DISP_H),
+                                  interpolation=cv2.INTER_LINEAR)
         if outputs:
-            draw_overlays(right_panel, outputs, scale=args.display_scale)
+            draw_overlays(bottom_panel, outputs, scale=args.display_scale)
 
-        # Left panel: project overlay directly onto camera image in camera space
+        # Top panel: project overlay directly onto camera image in camera space
         # For display, show the image as the user sees it (flip back if needed)
         display_bgr = cv2.flip(bgr, -1) if args.flip else bgr
         if outputs:
@@ -202,32 +204,34 @@ def main() -> None:
             cam_with_overlay = display_bgr.copy()
             draw_overlays(cam_with_overlay, outputs, scale=1.0,
                           K=webcam_K, min_thickness=cam_tk)
-            left_panel = cv2.resize(cam_with_overlay, (DISP_W, DISP_H),
-                                    interpolation=cv2.INTER_LINEAR)
+            top_panel = cv2.resize(cam_with_overlay, (DISP_W, DISP_H),
+                                   interpolation=cv2.INTER_LINEAR)
         else:
-            left_panel = cv2.resize(display_bgr, (DISP_W, DISP_H),
-                                    interpolation=cv2.INTER_LINEAR)
+            top_panel = cv2.resize(display_bgr, (DISP_W, DISP_H),
+                                   interpolation=cv2.INTER_LINEAR)
 
         # HUD text
         elapsed = time.monotonic() - t_start
         fps = (frame_count + 1) / elapsed if elapsed > 0 else 0.0
         frame_count += 1
 
-        cv2.putText(left_panel,
+        cv2.putText(top_panel,
                     f'Webcam  {CAM_W}x{CAM_H}  |  fl={args.focal_length:.0f}',
                     (8, 22), cv2.FONT_HERSHEY_SIMPLEX,
-                    0.55, (200, 200, 200), 1, cv2.LINE_AA)
+                    0.55, (0, 220, 100), 1, cv2.LINE_AA)
 
         mode = 'SuperCombo v0.8.10 inference' if model else 'Preview only (no supercombo.onnx)'
         color = (0, 220, 100) if model else (80, 80, 255)
-        cv2.putText(right_panel, mode, (8, 22),
+        cv2.putText(bottom_panel, mode, (8, 22),
                     cv2.FONT_HERSHEY_SIMPLEX, 0.55, color, 1, cv2.LINE_AA)
-        cv2.putText(right_panel, f'{fps:.1f} fps',
+        cv2.putText(bottom_panel, f'{fps:.1f} fps',
                     (8, DISP_H - 10),
-                    cv2.FONT_HERSHEY_SIMPLEX, 0.55, (200, 200, 200), 1, cv2.LINE_AA)
-        put_legend(right_panel)
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.55, (49, 34, 201), 1, cv2.LINE_AA)
+        put_legend(bottom_panel)
 
-        canvas = np.hstack([left_panel, right_panel])
+        bev_panel = cv2.resize(draw_birdseye(outputs),
+                                (bev_disp_w, CANVAS_H), interpolation=cv2.INTER_NEAREST)
+        canvas = np.hstack([np.vstack([top_panel, bottom_panel]), bev_panel])
         cv2.imshow('SuperCombo Webcam', canvas)
         if writer is not None:
             writer.write(canvas)
