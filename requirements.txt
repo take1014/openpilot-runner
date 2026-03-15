@@ -1,0 +1,23 @@
+# openpilot_runner — standalone webcam inference dependencies
+#
+# Python 3.11 recommended  (openpilot requires >=3.11, <3.13)
+# Minimum supported: Python 3.10
+#   (code uses X | Y union hints and built-in dict[]/tuple[] generics)
+#
+# Install:
+#   pip install -r requirements.txt
+#
+# For model inference (optional — preview-only mode works without it):
+#   pip install -r requirements.txt onnxruntime
+
+# ── Python version guard (pip >= 9.0 honours this marker) ─────────────────────
+python_requires>=3.11,<3.13
+
+# ── Core ──────────────────────────────────────────────────────────────────────
+numpy>=1.24
+opencv-python>=4.8        # cv2: webcam capture, warpPerspective, imshow
+
+# ── Model inference (optional) ────────────────────────────────────────────────
+# onnxruntime is needed to run supercombo.onnx (v0.8.10 model format).
+# Comment out if you only want the webcam preview without inference.
+onnxruntime>=1.14
