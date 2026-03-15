@@ -268,17 +268,17 @@ z_device = plan_z + MEDMODEL_HEIGHT   # 0 + 1.22 = 1.22 m at road surface
 
 The SuperCombo model was trained assuming the camera is mounted with a slight
 nose-down tilt. This tilt angle is encoded in the model's principal-point row
-`MEDMODEL_CY`:
+`MEDMODEL_CY` (47.6 px) and focal length `MEDMODEL_FL` (910 px):
 
-$$\theta_{model} = \arctan\!\left(\frac{H/2 - \text{MEDMODEL\_CY}}{\text{MEDMODEL\_FL}}\right) = \arctan\!\left(\frac{128 - 47.6}{910}\right) \approx 5.1°$$
+$$\theta = \arctan\!\left(\frac{128 - 47.6}{910}\right) \approx 5.1°$$
 
 A horizontally-mounted webcam lacks this tilt, causing lane lines, the path,
 and lead-car overlays to appear shifted upward in the model-space panel.
 `--pitch 5.1` compensates by pre-multiplying a pitch-rotation homography into
 the warp matrix before inference:
 
-$$H_{pitch} = K_{cam} \cdot R_x(\theta) \cdot K_{cam}^{-1}$$
-$$M \leftarrow H_{pitch} \cdot M$$
+$$H = K \cdot R_x(\theta) \cdot K^{-1}$$
+$$M \leftarrow H \cdot M$$
 
 where $R_x(\theta)$ is a rotation around the camera x-axis (positive = nose down).
 
