@@ -2,14 +2,14 @@
 
 ![screenshot](docs/screenshot.png)
 
-A standalone module that runs the openpilot SuperCombo model (v0.8.10) independently.
+A standalone module that runs the openpilot SuperCombo model (v0.8.12) independently.
 Performs inference on real-time webcam footage or a folder of saved images, and draws lane lines, road edges, path, and lead-car overlays.
 
 ## Features
 
 - **Real-time inference** (`openpilot_on_webcam.py`) — live overlay display on webcam footage, with optional MP4 recording
 - **Batch processing** (`test/test_images.py`) — process an image folder and write annotated output images
-- **SuperCombo v0.8.10** — model executed via ONNX Runtime; works on M1/M2 Mac and Linux CPU
+- **SuperCombo v0.8.12** — model executed via ONNX Runtime; works on M1/M2 Mac and Linux CPU
 - **Split view** — left panel: full camera frame (1280×720), right panel: model input view (512×256 × scale)
 - **Tested camera** — Logitech C920 (1280×720, HFOV ~70°, focal length ~908 px)
 
@@ -38,7 +38,7 @@ pip install -r requirements.txt
 
 ## Model file
 
-Place `supercombo.onnx` (openpilot v0.8.10) at:
+Place `supercombo.onnx` (openpilot v0.8.12) at:
 
 ```
 openpilot-runner/models/supercombo.onnx
