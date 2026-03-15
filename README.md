@@ -1,5 +1,7 @@
 # openpilot-runner
 
+![screenshot](docs/screenshot.png)
+
 A standalone module that runs the openpilot SuperCombo model (v0.8.10) independently.
 Performs inference on real-time webcam footage or a folder of saved images, and draws lane lines, road edges, path, and lead-car overlays.
 
