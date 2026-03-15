@@ -97,12 +97,13 @@ def _fill_poly_alpha(img: np.ndarray, poly: np.ndarray | None,
     cv2.addWeighted(overlay, alpha, img, 1.0 - alpha, 0, img)
 
 
-def _fill_path_gradient(img: np.ndarray, poly: np.ndarray | None) -> None:
+def _fill_path_gradient(img: np.ndarray, poly: np.ndarray | None,
+                        grad_top: float = 0.4) -> None:
     """Fill path polygon with a white→transparent vertical gradient.
 
-    Matches openpilot paint.cc:
-        nvgLinearGradient(vg, fb_w, fb_h, fb_w, fb_h*0.4, COLOR_WHITE, COLOR_WHITE_ALPHA(0))
-    → fully opaque white at the bottom of the image, fully transparent at 40 % from top.
+    grad_top : fraction of image height below which the gradient starts.
+               Derived from K[1,2]/img_h so the fade begins near the horizon.
+               Fully opaque at bottom, fully transparent above grad_top.
     """
     if poly is None or len(poly) < 3:
         return
@@ -114,8 +115,8 @@ def _fill_path_gradient(img: np.ndarray, poly: np.ndarray | None) -> None:
     if not mask.any():
         return
 
-    # α(y) = clamp((y − 0.4h) / (h − 0.4h), 0, 1)
-    y_transp = h * 0.4
+    # α(y) = clamp((y − grad_top*h) / (h − grad_top*h), 0, 1)
+    y_transp = h * grad_top
     span = max(1.0, h - y_transp)
     ys = np.clip((np.arange(h, dtype=np.float32) - y_transp) / span, 0.0, 1.0)
     alpha_map = (mask.astype(np.float32) / 255.0) * ys[:, np.newaxis]  # (h, w)
@@ -191,7 +192,9 @@ def draw_overlays(img: np.ndarray, outputs: dict,
         path   = plan[0, 0, :max_path_idx + 1]   # (K, 15)
         z_plan = path[:, 2] + MEDMODEL_HEIGHT      # road-surface-relative → device frame
         poly   = _band_polygon(path[:, 0], path[:, 1], z_plan, 0.5, K, scale)
-        _fill_path_gradient(img, poly)
+        # Derive gradient start from principal point (horizon position in image)
+        grad_top = float(np.clip(K[1, 2] / img.shape[0], 0.05, 0.55))
+        _fill_path_gradient(img, poly, grad_top)
 
     # ── Road edges — red filled bands; alpha = clamp(1 − std, 0, 1) ───────────
     # Matches paint.cc: nvgRGBAf(1.0, 0.0, 0.0, clamp(1 − road_edge_stds[i], 0, 1))
