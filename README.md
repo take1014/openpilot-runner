@@ -276,3 +276,12 @@ Formula (from horizontal field of view HFOV):
 ```
 focal_length = (width / 2) / tan(HFOV_deg / 2 * π / 180)
 ```
+
+---
+
+## Acknowledgements
+
+The SuperCombo model is developed and maintained by [commaai](https://github.com/commaai).
+This project is an independent research tool that runs the model outside of openpilot for experimentation purposes.
+
+- [commaai/openpilot](https://github.com/commaai/openpilot) — source of the SuperCombo model and coordinate system definitions
