@@ -10,9 +10,6 @@
 # For model inference (optional — preview-only mode works without it):
 #   pip install -r requirements.txt onnxruntime
 
-# ── Python version guard (pip >= 9.0 honours this marker) ─────────────────────
-python_requires>=3.11,<3.13
-
 # ── Core ──────────────────────────────────────────────────────────────────────
 numpy>=1.24
 opencv-python>=4.8        # cv2: webcam capture, warpPerspective, imshow
